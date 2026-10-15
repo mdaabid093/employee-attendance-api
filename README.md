@@ -31,6 +31,3 @@ Open http://localhost:8000/docs to try the endpoints.
 - Times are stored in UTC; business rules (shift, late, overtime) use IST.
 - Concurrent edits of the same record: the second request gets 409 and can retry.
 - Design decisions are in `DECISIONS.md`; the review of the starter code is in `REVIEW.md`.
-
-## Not done / known gaps
-None known. (Edit this line if you find something missing.)
