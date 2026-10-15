@@ -1,0 +1,11 @@
+# DECISIONS.md
+
+1. **Indexes.** I made 8 indexes. On `employees`: `emp_code` (unique), `(department, emp_code)`, `joined_on`, and `(department, joined_on)`. On `attendance_logs`: `(emp_code, date)` (unique), `(date desc, emp_code)`, `(status, date desc, emp_code)`, and `(emp_code, punch_in desc)`. Each one matches a query I run: listing sorted by date, filtering by employee or status, finding a person's open punch-in, and counting employees by department. Without them MongoDB would read every document. I did not index `late_minutes`, because the analytics read a whole month of records anyway, so that index would only make writes slower.
+
+2. **Two punch-ins at the same time.** If I first checked "does this record exist?" and then inserted, two requests could both pass the check and both insert. So I skip the check. I put a unique index on `(emp_code, date)` and just insert. MongoDB lets one request through and rejects the other with a duplicate-key error, and I return 409 for it. The database decides, so it is safe even with many requests at once.
+
+3. **Ties in the leaderboard.** People with the same late minutes get the same rank, and the next rank is skipped (1, 2, 2, 4). I used `$rank` for this. I work out the ranks for everyone first and only then keep ranks up to `limit`. Because of that, if people are tied at the last place, all of them are returned, so the list can be longer than `limit`.
+
+4. **Headcount.** The department summary starts from the `employees` collection, not from the logs. It keeps every employee who joined on or before the end of the month. Then it looks up each person's logs for that month. If I started from the logs, an employee with no logs would be missing and the headcount would be too low. `$unwind` with `preserveNullAndEmptyArrays` keeps those people in.
+
+5. **If the data was 100 times bigger.** The slow part would be reading and adding up millions of raw logs for every analytics request. I would store daily totals per employee and per department, updated when someone punches in or out, and run the analytics on those small summaries instead. I would also check the explain output again to make sure the indexes are still being used.
